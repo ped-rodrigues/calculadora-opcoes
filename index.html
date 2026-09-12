@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de Opções</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --subtle: #f9fafb;
+    --ink: #0f1419;
+    --ink-2: #374151;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --line-strong: #d1d5db;
+    --accent: #1e3a8a;
+    --accent-ring: rgba(30, 58, 138, .16);
+    --warn-bg: #fffbeb;
+    --warn-line: #fde68a;
+    --warn-ink: #92400e;
+    --err-bg: #fef2f2;
+    --err-line: #fecaca;
+    --err-ink: #b91c1c;
+    --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0d10;
+      --surface: #121418;
+      --subtle: #181b20;
+      --ink: #eceef1;
+      --ink-2: #c4c9d0;
+      --muted: #8a919b;
+      --line: #23272e;
+      --line-strong: #343944;
+      --accent: #93a9f5;
+      --accent-ring: rgba(147, 169, 245, .22);
+      --warn-bg: #221a0b;
+      --warn-line: #4a3510;
+      --warn-ink: #fbbf24;
+      --err-bg: #241213;
+      --err-line: #4c1d1d;
+      --err-ink: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+  .conteiner { max-width: 1120px; margin: 0 auto; padding-inline: 24px; }
+  @media (max-width: 560px) { .conteiner { padding-inline: 16px; } }
+
+  /* Barra superior */
+  .barra { background: var(--surface); border-bottom: 1px solid var(--line); }
+  .barra-inner { height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .marca { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -.01em; }
+  .marca-icone { width: 26px; height: 26px; border-radius: 7px; background: var(--ink); color: var(--surface); display: grid; place-items: center; flex: none; }
+  .botao { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2); font: 500 .82rem var(--font); cursor: pointer; }
+  .botao:hover { background: var(--subtle); border-color: var(--muted); }
+  .botao:focus-visible { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .botao.primario { min-width: 78px; background: var(--ink); border-color: var(--ink); color: var(--surface); }
+  .botao.primario:hover { opacity: .88; }
+  .botao:disabled { opacity: .4; cursor: default; pointer-events: none; }
+  .barra-acoes { display: flex; gap: 8px; }
+
+  /* Layout */
+  main { display: grid; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); gap: 16px; padding-block: 20px; }
+  .painel { min-width: 0; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  /* Tela estreita: resultado no topo e fixo durante a rolagem */
+  @media (max-width: 900px) {
+    main { grid-template-columns: minmax(0, 1fr); gap: 12px; padding-block: 16px; }
+    .painel { padding: 16px; }
+    .resultado { order: -1; position: sticky; top: 0; z-index: 1; }
+  }
+
+  /* Campos */
+  .campos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-content: center; }
+  .campo { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .campo.duplo { grid-column: span 2; }
+  .campo label { font-size: .78rem; font-weight: 500; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entrada { display: flex; align-items: center; height: 40px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); transition: border-color .15s, box-shadow .15s; }
+  .entrada:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .entrada span { padding-left: 11px; font-size: .82rem; color: var(--muted); }
+  .entrada input { flex: 1; width: 100%; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; padding: 0 11px 0 7px; font: 500 .95rem var(--font); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .entrada input:first-child { padding-left: 11px; }
+  .entrada input::placeholder { color: var(--muted); opacity: .6; }
+  @media (max-width: 480px) {
+    .campos { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; }
+  }
+
+  /* Resultado */
+  .resultado { container-type: inline-size; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; }
+  .kpi-rotulo { font-size: .8rem; font-weight: 500; color: var(--muted); }
+  .kpi-valor { margin-top: 4px; display: flex; align-items: baseline; gap: 10px; font-variant-numeric: tabular-nums; }
+  .kpi-valor strong { font-size: clamp(2.75rem, 2rem + 2.5vw, 4rem); line-height: 1; font-weight: 600; letter-spacing: -.035em; }
+  .kpi-valor span { font-size: 1rem; color: var(--muted); }
+
+  .nota { padding: 9px 12px; border: 1px solid transparent; border-radius: 8px; font-size: .84rem; }
+  .nota-alerta { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
+  .nota-erro { background: var(--err-bg); border-color: var(--err-line); color: var(--err-ink); }
+
+  .metricas { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .metrica { min-width: 0; padding: 12px 16px; border-left: 1px solid var(--line); }
+  .metrica:first-child { border-left: 0; }
+  @container (max-width: 420px) {
+    .metricas { grid-auto-flow: row; }
+    .metrica { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-left: 0; border-top: 1px solid var(--line); }
+    .metrica:first-child { border-top: 0; }
+  }
+  .metrica-rotulo { font-size: .75rem; color: var(--muted); white-space: nowrap; }
+  .metrica-valor { margin-top: 4px; font-size: 1.15rem; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .moeda { margin-right: .3em; font-size: .7em; font-weight: 500; color: var(--muted); }
+
+  /* Histórico */
+  .historico-secao { padding-bottom: 32px; }
+  .historico { padding: 0; overflow: hidden; }
+  .historico-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); min-height: 53px; }
+  .historico-topo h2 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; }
+  .contador { min-width: 22px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; border: 1px solid var(--line); border-radius: 999px; background: var(--subtle); font-size: .72rem; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .historico-vazio { margin: 0; padding: 18px 16px; font-size: .85rem; color: var(--muted); }
+  .tabela-rolagem { overflow-x: auto; }
+  .historico table { width: 100%; border-collapse: collapse; font-size: .85rem; font-variant-numeric: tabular-nums; }
+  .historico th { padding: 9px 16px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: bottom; font-size: .7rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .historico td { padding: 9px 16px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .historico th:first-child, .historico td:first-child { text-align: left; }
+  .historico td:first-child { color: var(--muted); }
+  .historico td:last-child { width: 1%; padding: 0 10px 0 0; }
+  .historico tbody tr { cursor: pointer; }
+  .historico tbody tr:hover { background: var(--subtle); }
+  .historico tbody tr:last-child td { border-bottom: 0; }
+  .historico td.qtd { font-weight: 600; }
+  .excluir { width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 1.15rem; line-height: 1; cursor: pointer; }
+  .excluir:hover { background: var(--err-bg); color: var(--err-ink); }
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <div class="conteiner barra-inner">
+    <div class="marca">
+      <span class="marca-icone" aria-hidden="true">
+        <svg width="15" height="15" viewBox="0 0 16 16"><path d="M8 2.75 13.75 13.25H2.25Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      </span>
+      Calculadora de Opções
+    </div>
+    <div class="barra-acoes">
+      <button type="button" class="botao" id="limpar">Limpar</button>
+      <button type="submit" form="form" class="botao primario" id="salvar" disabled>Salvar</button>
+    </div>
+  </div>
+</header>
+
+<main class="conteiner">
+  <form class="painel campos" id="form" autocomplete="off">
+    <div class="campo">
+      <label for="entrada">Entrada</label>
+      <div class="entrada"><span>R$</span><input id="entrada" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="campo">
+      <label for="stop">Stop</label>
+      <div class="entrada"><span>R$</span><input id="stop" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="campo">
+      <label for="delta">Delta</label>
+      <div class="entrada"><input id="delta" inputmode="decimal" placeholder="0 a 1"></div>
+    </div>
+    <div class="campo duplo">
+      <label for="risco">Risco pretendido</label>
+      <div class="entrada"><span>R$</span><input id="risco" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="campo">
+      <label for="lote">Lote</label>
+      <div class="entrada"><input id="lote" inputmode="numeric"></div>
+    </div>
+  </form>
+
+  <section class="painel resultado" aria-live="polite">
+    <div>
+      <div class="kpi-rotulo">Qtd de opções para o risco pretendido</div>
+      <div class="kpi-valor"><strong id="kpi-qtd">—</strong><span>opções</span></div>
+    </div>
+
+    <div class="nota" id="mensagem" hidden></div>
+
+    <div class="metricas">
+      <div class="metrica">
+        <div class="metrica-rotulo">Risco por opção</div>
+        <div class="metrica-valor" id="m-opcao">—</div>
+      </div>
+      <div class="metrica">
+        <div class="metrica-rotulo">Risco efetivo</div>
+        <div class="metrica-valor" id="m-efetivo">—</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<section class="conteiner historico-secao">
+  <div class="painel historico">
+    <div class="historico-topo">
+      <h2>Histórico <span class="contador" id="contador">0</span></h2>
+      <button type="button" class="botao" id="limpar-historico" hidden>Limpar histórico</button>
+    </div>
+    <p class="historico-vazio" id="historico-vazio">Nenhum cálculo salvo. Use Salvar ou Ctrl+Enter para registrar o resultado atual.</p>
+    <div class="tabela-rolagem" id="tabela-historico" hidden>
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Entrada</th>
+            <th>Stop</th>
+            <th>Delta</th>
+            <th>Risco pretendido</th>
+            <th>Lote</th>
+            <th>Risco/opção</th>
+            <th>Qtd p/ risco pretendido</th>
+            <th>Risco efetivo</th>
+            <th><span hidden>Ações</span></th>
+          </tr>
+        </thead>
+        <tbody id="historico-corpo"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<script>
+  const CAMPOS = ['entrada', 'stop', 'delta', 'lote', 'risco'];
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- Formatação ----------
+  const fmt = (n, min = 2, max = 2) => Number(n).toLocaleString('pt-BR', { minimumFractionDigits: min, maximumFractionDigits: max });
+  const brl = (n, max = 4) => 'R$ ' + fmt(n, 2, max);
+  const inteiro = (n) => Math.floor(n + 1e-9).toLocaleString('pt-BR');
+  const arred = (n) => Math.round(n * 1e8) / 1e8;
+
+  // Aceita "42,42", "42.42", "1.234,56" e "R$ 500"
+  function lerNumero(texto) {
+    let t = String(texto).replace(/R\$|\s/g, '');
+    if (t === '') return null;
+    if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+    const n = Number(t);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  // ---------- Cálculo ----------
+  function calcular(v) {
+    const riscoSpot = arred(Math.abs(v.entrada - v.stop));
+    const riscoOpcao = arred(riscoSpot * Math.abs(v.delta));
+    const qtdLote = Math.floor(v.risco / riscoOpcao / v.lote + 1e-9) * v.lote;
+    return { riscoOpcao, qtdLote, riscoEfetivo: qtdLote * riscoOpcao };
+  }
+
+  function lerCampos() {
+    const v = {};
+    for (const c of CAMPOS) v[c] = lerNumero($(c).value);
+
+    for (const c of CAMPOS) {
+      if (Number.isNaN(v[c])) return { erro: 'Há um valor inválido nos campos.' };
+    }
+    if (CAMPOS.some((c) => v[c] === null)) return { vazio: true };
+
+    if (v.entrada <= 0 || v.stop <= 0) return { erro: 'Entrada e stop devem ser maiores que zero.' };
+    if (arred(v.entrada) === arred(v.stop)) return { erro: 'Entrada e stop não podem ser iguais.' };
+    if (v.delta === 0 || Math.abs(v.delta) > 1) return { erro: 'O delta deve estar entre 0 e 1.' };
+    if (v.risco <= 0) return { erro: 'O risco pretendido deve ser maior que zero.' };
+    if (v.lote < 1 || !Number.isInteger(v.lote)) return { erro: 'O lote deve ser um número inteiro.' };
+    return { v };
+  }
+
+  // ---------- Tela ----------
+  const mostrar = (id, texto) => {
+    $(id).innerHTML = texto.startsWith('R$ ') ? `<span class="moeda">R$</span>${texto.slice(3)}` : texto;
+  };
+
+  function definirNota(tipo, texto) {
+    const el = $('mensagem');
+    el.hidden = !texto;
+    if (texto) {
+      el.className = `nota nota-${tipo}`;
+      el.textContent = texto;
+    }
+  }
+
+  function atualizar() {
+    const { v, erro } = lerCampos();
+    atual = v ? { v, r: calcular(v) } : null;
+    $('salvar').disabled = !atual || atual.r.qtdLote === 0;
+
+    if (!v) {
+      ['kpi-qtd', 'm-opcao', 'm-efetivo'].forEach((id) => mostrar(id, '—'));
+      definirNota('erro', erro);
+      return;
+    }
+
+    const { r } = atual;
+    mostrar('kpi-qtd', inteiro(r.qtdLote));
+    mostrar('m-opcao', brl(r.riscoOpcao));
+    mostrar('m-efetivo', brl(r.riscoEfetivo, 2));
+    definirNota('alerta', r.qtdLote === 0 ? `O risco não comporta um lote. Mínimo necessário: ${brl(v.lote * r.riscoOpcao, 2)}.` : null);
+  }
+
+  function preencher(valores) {
+    for (const c of CAMPOS) $(c).value = valores[c] ?? '';
+    atualizar();
+  }
+
+  // ---------- Histórico ----------
+  const CHAVE_HISTORICO = 'calculadora-opcoes:historico';
+  const LIMITE_HISTORICO = 50;
+  let atual = null;
+  let historico = carregarHistorico();
+
+  function carregarHistorico() {
+    try {
+      const salvo = JSON.parse(localStorage.getItem(CHAVE_HISTORICO));
+      return Array.isArray(salvo) ? salvo.filter((h) => h && h.campos && h.v && h.r) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function gravarHistorico() {
+    try {
+      localStorage.setItem(CHAVE_HISTORICO, JSON.stringify(historico));
+    } catch {}
+  }
+
+  const dataCurta = (ms) => new Date(Number(ms)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+  function renderizarHistorico() {
+    const vazio = historico.length === 0;
+    $('contador').textContent = historico.length;
+    $('historico-vazio').hidden = !vazio;
+    $('tabela-historico').hidden = vazio;
+    $('limpar-historico').hidden = vazio;
+    $('historico-corpo').innerHTML = historico.map(({ id, v, r }) => `
+      <tr data-id="${Number(id)}" title="Carregar na calculadora">
+        <td>${dataCurta(id)}</td>
+        <td>${brl(v.entrada)}</td>
+        <td>${brl(v.stop)}</td>
+        <td>${fmt(Math.abs(v.delta), 2, 4)}</td>
+        <td>${brl(v.risco, 2)}</td>
+        <td>${inteiro(v.lote)}</td>
+        <td>${brl(r.riscoOpcao)}</td>
+        <td class="qtd">${inteiro(r.qtdLote)}</td>
+        <td>${brl(r.riscoEfetivo, 2)}</td>
+        <td><button type="button" class="excluir" data-excluir="${Number(id)}" aria-label="Excluir">×</button></td>
+      </tr>`).join('');
+  }
+
+  function salvar() {
+    if (!atual || atual.r.qtdLote === 0) return;
+    const campos = Object.fromEntries(CAMPOS.map((c) => [c, $(c).value.trim()]));
+    const ultimo = historico[0];
+    if (ultimo && CAMPOS.every((c) => ultimo.campos[c] === campos[c])) return avisarBotao('Já salvo');
+
+    historico.unshift({ id: Date.now(), campos, v: atual.v, r: atual.r });
+    historico = historico.slice(0, LIMITE_HISTORICO);
+    gravarHistorico();
+    renderizarHistorico();
+    avisarBotao('Salvo');
+  }
+
+  function avisarBotao(texto) {
+    const botao = $('salvar');
+    botao.textContent = texto;
+    clearTimeout(avisarBotao.timer);
+    avisarBotao.timer = setTimeout(() => { botao.textContent = 'Salvar'; }, 1200);
+  }
+
+  $('historico-corpo').addEventListener('click', (e) => {
+    const excluir = e.target.closest('[data-excluir]');
+    if (excluir) {
+      historico = historico.filter((h) => h.id !== Number(excluir.dataset.excluir));
+      gravarHistorico();
+      renderizarHistorico();
+      return;
+    }
+    const linha = e.target.closest('tr[data-id]');
+    const item = linha && historico.find((h) => h.id === Number(linha.dataset.id));
+    if (item) {
+      preencher(item.campos);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+
+  // Limpar tudo pede um segundo clique para confirmar
+  $('limpar-historico').addEventListener('click', (e) => {
+    const botao = e.currentTarget;
+    clearTimeout(botao.timer);
+    if (botao.dataset.confirmar) {
+      historico = [];
+      gravarHistorico();
+      renderizarHistorico();
+    } else {
+      botao.dataset.confirmar = '1';
+      botao.textContent = 'Confirmar exclusão';
+      botao.timer = setTimeout(() => { delete botao.dataset.confirmar; botao.textContent = 'Limpar histórico'; }, 3000);
+      return;
+    }
+    delete botao.dataset.confirmar;
+    botao.textContent = 'Limpar histórico';
+  });
+
+  // Enter avança para o próximo campo e, no último, salva. Shift+Enter volta. Ctrl+Enter salva de qualquer campo.
+  const INPUTS = [...$('form').querySelectorAll('input')];
+  INPUTS.forEach((el, i) => { el.enterKeyHint = i < INPUTS.length - 1 ? 'next' : 'done'; });
+
+  $('form').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || !INPUTS.includes(e.target)) return;
+    e.preventDefault();
+    const proximo = INPUTS.indexOf(e.target) + (e.shiftKey ? -1 : 1);
+    if (e.ctrlKey || e.metaKey || proximo >= INPUTS.length) return salvar();
+    const campo = INPUTS[Math.max(proximo, 0)];
+    campo.focus();
+    campo.select();
+  });
+
+  $('form').addEventListener('input', atualizar);
+  $('form').addEventListener('submit', (e) => { e.preventDefault(); salvar(); });
+  $('limpar').addEventListener('click', () => preencher({ lote: '100' }));
+  renderizarHistorico();
+  preencher({ lote: '100' });
+</script>
+</body>
+</html>
